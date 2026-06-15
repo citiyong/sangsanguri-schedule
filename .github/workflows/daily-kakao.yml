@@ -1,0 +1,18 @@
+name: 📅 매일 아침 카카오톡 일정 알림
+
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 매일 23:00 UTC = 오전 8:00 KST
+  workflow_dispatch:         # 수동 테스트 가능
+
+jobs:
+  send-kakao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 📨 오늘 일정 카카오톡 발송
+        env:
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+        run: node send-kakao.js

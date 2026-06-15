@@ -413,7 +413,10 @@
 <!-- 헤더 -->
 <header>
   <h1>📅 상상우리 회의 일정 <span>Meeting Scheduler</span></h1>
-  <div id="clock"></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="clock"></div>
+    <button onclick="openSettings()" title="GitHub 연동 설정" style="background:rgba(255,255,255,.15);border:none;border-radius:10px;padding:8px 14px;color:white;font-size:1.3rem;cursor:pointer;">⚙️</button>
+  </div>
 </header>
 
 <!-- 탭 -->
@@ -572,6 +575,33 @@
 <!-- 토스트 알림 -->
 <div id="toast"></div>
 
+<!-- 설정 모달 -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-width:480px">
+    <h2>⚙️ GitHub 연동 설정</h2>
+    <p style="font-size:.95rem;color:#6b7280;margin-bottom:20px;line-height:1.6">
+      일정을 GitHub에 자동 저장하면 매일 아침 카카오톡으로 오늘의 일정을 받을 수 있습니다.<br>
+      <strong>GitHub Personal Access Token</strong>을 입력해 주세요.
+    </p>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>🔑 GitHub Token (repo 권한 필요)</label>
+      <input type="password" id="s-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+    </div>
+    <div id="sync-status" style="font-size:.9rem;margin-bottom:16px;min-height:20px"></div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeSettings()">취소</button>
+      <button class="btn btn-primary" style="font-size:1rem;padding:12px 24px" onclick="saveSettings()">✅ 저장 및 연동</button>
+    </div>
+    <hr style="margin:20px 0;border-color:#e5e7eb">
+    <p style="font-size:.85rem;color:#9ca3af;line-height:1.7">
+      📌 <strong>GitHub Token 만드는 방법</strong><br>
+      github.com → 우상단 프로필 사진 → Settings →<br>
+      Developer settings → Personal access tokens → Tokens (classic) →<br>
+      Generate new token → <strong>repo</strong> 체크 → Generate token → 복사
+    </p>
+  </div>
+</div>
+
 <!-- 수정 모달 -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
@@ -616,6 +646,54 @@
 
   function save() {
     localStorage.setItem('sangsanguri_schedules', JSON.stringify(schedules));
+    syncToGitHub();
+  }
+
+  // ── GitHub 동기화 ────────────────────────────────────────
+  const GH_OWNER = 'citiyong';
+  const GH_REPO  = 'sangsanguri-schedule';
+  const GH_FILE  = 'schedule.json';
+
+  function openSettings() {
+    const token = localStorage.getItem('gh_token') || '';
+    document.getElementById('s-token').value = token;
+    document.getElementById('sync-status').textContent = '';
+    document.getElementById('settings-modal').classList.add('open');
+  }
+  function closeSettings() {
+    document.getElementById('settings-modal').classList.remove('open');
+  }
+  async function saveSettings() {
+    const token = document.getElementById('s-token').value.trim();
+    if (!token) { showToast('⚠️ 토큰을 입력해 주세요.'); return; }
+    document.getElementById('sync-status').textContent = '🔄 연결 확인 중...';
+    const ok = await syncToGitHub(token, true);
+    if (ok) {
+      localStorage.setItem('gh_token', token);
+      document.getElementById('sync-status').textContent = '✅ 연결 성공! 이후 일정 변경 시 자동으로 GitHub에 저장됩니다.';
+      setTimeout(closeSettings, 1800);
+    } else {
+      document.getElementById('sync-status').textContent = '❌ 연결 실패. 토큰을 확인해 주세요.';
+    }
+  }
+
+  async function syncToGitHub(token, testOnly = false) {
+    token = token || localStorage.getItem('gh_token');
+    if (!token) return false;
+    try {
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      let sha = null;
+      const getRes = await fetch(url, { headers });
+      if (getRes.ok) { sha = (await getRes.json()).sha; }
+      if (testOnly && getRes.status === 404) return true;
+      if (!getRes.ok && getRes.status !== 404) return false;
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(schedules, null, 2))));
+      const body = { message: '일정 데이터 업데이트', content };
+      if (sha) body.sha = sha;
+      const putRes = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+      return putRes.ok || putRes.status === 201;
+    } catch { return false; }
   }
 
   // ── 날짜 유틸 ───────────────────────────────────────────
