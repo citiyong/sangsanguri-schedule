@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상상우리 회의 일정 관리</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+      background: #f0f4ff;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── 헤더 ── */
+    header {
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+      color: white;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(30,58,138,.4);
+    }
+    header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
+    header h1 span { font-size: 1.1rem; font-weight: 400; margin-left: 10px; opacity: .85; }
+    #clock {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: rgba(255,255,255,.15);
+      padding: 8px 20px;
+      border-radius: 12px;
+    }
+
+    /* ── 탭 ── */
+    nav {
+      display: flex;
+      gap: 8px;
+      padding: 20px 32px 0;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 12px 12px 0 0;
+      cursor: pointer;
+      background: #c7d7f8;
+      color: #1e3a8a;
+      transition: background .2s, color .2s;
+    }
+    .tab-btn.active {
+      background: white;
+      color: #1e3a8a;
+      box-shadow: 0 -2px 8px rgba(0,0,0,.08);
+    }
+    .tab-btn:hover:not(.active) { background: #a5b8f0; }
+
+    /* ── 메인 ── */
+    main {
+      padding: 0 32px 40px;
+    }
+    .card {
+      background: white;
+      border-radius: 0 16px 16px 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      padding: 28px;
+    }
+
+    /* ── 탭 컨텐츠 ── */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── 입력 폼 ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #374151;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      font-size: 1.05rem;
+      padding: 12px 14px;
+      border: 2px solid #d1d5db;
+      border-radius: 10px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color .2s;
+      background: #fafafa;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { border-color: #3b82f6; background: white; }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .memo-group { grid-column: 1 / -1; }
+
+    /* ── 버튼 ── */
+    .btn {
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 14px 32px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform .1s, box-shadow .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: white;
+      box-shadow: 0 4px 14px rgba(37,99,235,.4);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 18px rgba(37,99,235,.5); }
+    .btn-danger {
+      background: #fee2e2;
+      color: #dc2626;
+      padding: 8px 16px;
+      font-size: .95rem;
+    }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-edit {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 16px;
+      font-size: .95rem;
+    }
+    .btn-edit:hover { background: #bae6fd; }
+    .btn-excel {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: white;
+      box-shadow: 0 4px 14px rgba(22,163,74,.35);
+      font-size: 1rem;
+      padding: 10px 22px;
+      margin-left: auto;
+    }
+    .btn-excel:hover { box-shadow: 0 6px 18px rgba(22,163,74,.5); }
+
+    /* ── 섹션 제목 ── */
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #1e3a8a;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      font-size: .85rem;
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+
+    /* ── 테이블 ── */
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #e5e7eb; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1rem;
+    }
+    thead { background: #1e3a8a; color: white; }
+    thead th {
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 1rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f0f0f0; transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #eff6ff; }
+    tbody td { padding: 14px 16px; vertical-align: middle; }
+    .time-col { font-size: 1.1rem; font-weight: 700; color: #2563eb; white-space: nowrap; }
+    .name-col { font-size: 1.05rem; font-weight: 700; }
+    .memo-col { color: #6b7280; font-size: .95rem; max-width: 200px; }
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #9ca3af;
+      font-size: 1.1rem;
+    }
+
+    /* ── 오늘 강조 배지 ── */
+    .today-row { background: #fff7ed !important; }
+    .today-row:hover { background: #ffedd5 !important; }
+
+    /* ── 검색 ── */
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-bar input {
+      font-size: 1rem;
+      padding: 10px 16px;
+      border: 2px solid #d1d5db;
+      border-radius: 10px;
+      outline: none;
+      flex: 1;
+      min-width: 180px;
+      font-family: inherit;
+      transition: border-color .2s;
+    }
+    .search-bar input:focus { border-color: #3b82f6; }
+    .sort-label { font-weight: 700; color: #374151; }
+    .search-bar select {
+      font-size: 1rem;
+      padding: 10px 14px;
+      border: 2px solid #d1d5db;
+      border-radius: 10px;
+      outline: none;
+      font-family: inherit;
+      background: white;
+    }
+
+    /* ── 알림 토스트 ── */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e3a8a;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transition: transform .3s ease;
+      z-index: 1000;
+      pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── 모달 ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      width: 90%;
+      max-width: 540px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+    .modal h2 { font-size: 1.5rem; font-weight: 800; color: #1e3a8a; margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-week {
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 10px 18px;
+      border: 2px solid #d1d5db;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-week:hover { background: #e5e7eb; }
+    .btn-week.active-week {
+      background: #1e3a8a;
+      color: white;
+      border-color: #1e3a8a;
+    }
+
+    /* ── 주간 일정표 보드 ── */
+    .week-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .week-nav-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1e3a8a;
+      flex: 1;
+      text-align: center;
+    }
+    .board-wrap { overflow-x: auto; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(130px, 1fr));
+      gap: 8px;
+      min-width: 750px;
+    }
+    .board-day {
+      background: #f8faff;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+    }
+    .board-day.today-col {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #93c5fd;
+    }
+    .board-day.weekend-col { background: #fef9f0; border-color: #fcd34d; }
+    .board-day-header {
+      background: #1e3a8a;
+      color: white;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .board-day.today-col .board-day-header { background: #2563eb; }
+    .board-day.weekend-col .board-day-header { background: #d97706; }
+    .board-day-header .day-name { font-size: 1rem; font-weight: 800; }
+    .board-day-header .day-date { font-size: .85rem; opacity: .85; margin-top: 2px; }
+    .board-day-header .today-badge {
+      display: inline-block;
+      background: #fbbf24;
+      color: #1a1a2e;
+      font-size: .7rem;
+      font-weight: 800;
+      padding: 1px 8px;
+      border-radius: 20px;
+      margin-top: 4px;
+    }
+    .board-day-header .count-badge {
+      display: inline-block;
+      background: rgba(255,255,255,.25);
+      font-size: .75rem;
+      padding: 1px 8px;
+      border-radius: 20px;
+      margin-top: 4px;
+    }
+    .board-events {
+      padding: 8px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 80px;
+    }
+    .board-event {
+      background: white;
+      border-left: 4px solid #3b82f6;
+      border-radius: 8px;
+      padding: 8px 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      cursor: default;
+    }
+    .board-day.weekend-col .board-event { border-left-color: #d97706; }
+    .board-day.today-col .board-event { border-left-color: #2563eb; }
+    .event-time { font-size: .8rem; font-weight: 700; color: #2563eb; }
+    .board-day.weekend-col .event-time { color: #d97706; }
+    .event-name { font-size: .9rem; font-weight: 700; color: #1a1a2e; margin-top: 2px; }
+    .event-person { font-size: .78rem; color: #6b7280; margin-top: 2px; }
+    .event-memo { font-size: .75rem; color: #9ca3af; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .board-no-event { text-align: center; color: #d1d5db; font-size: .9rem; padding: 24px 0; }
+
+    /* ── 인쇄 ── */
+    @media print {
+      header, nav, .week-nav, .modal-overlay, #toast { display: none !important; }
+      .tab-content { display: block !important; }
+      #tab-today, #tab-week, #tab-all, #tab-add { display: none !important; }
+      #tab-grid { display: block !important; }
+      .card { box-shadow: none; border: 1px solid #ccc; }
+    }
+
+    /* ── 반응형 ── */
+    @media (max-width: 600px) {
+      header { padding: 18px 16px; }
+      header h1 { font-size: 1.5rem; }
+      nav, main { padding-left: 16px; padding-right: 16px; }
+      .card { padding: 18px; }
+      thead th, tbody td { padding: 10px 10px; font-size: .9rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<header>
+  <h1>📅 상상우리 회의 일정 <span>Meeting Scheduler</span></h1>
+  <div id="clock"></div>
+</header>
+
+<!-- 탭 -->
+<nav>
+  <button class="tab-btn active" onclick="showTab('today')">📌 오늘 일정</button>
+  <button class="tab-btn" onclick="showTab('week')">📆 이번 주 일정</button>
+  <button class="tab-btn" onclick="showTab('all')">📋 전체 일정</button>
+  <button class="tab-btn" onclick="showTab('add')">➕ 일정 추가</button>
+  <button class="tab-btn" onclick="showTab('grid')">🗓️ 주간 일정표</button>
+</nav>
+
+<main>
+
+  <!-- ══ 오늘 일정 ══ -->
+  <div id="tab-today" class="tab-content active">
+    <div class="card">
+      <div class="section-title">
+        📌 오늘 회의 일정
+        <span class="badge" id="today-count">0건</span>
+        <span style="font-size:1rem;font-weight:400;color:#6b7280;margin-left:8px" id="today-date"></span>
+        <button class="btn btn-excel" onclick="exportToExcel('today')">📥 엑셀 내보내기</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>시간</th>
+              <th>회의명</th>
+              <th>담당자</th>
+              <th>메모</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="today-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 이번 주 일정 ══ -->
+  <div id="tab-week" class="tab-content">
+    <div class="card">
+      <div class="section-title">
+        📆 이번 주 회의 일정
+        <span class="badge" id="week-count">0건</span>
+        <span style="font-size:1rem;font-weight:400;color:#6b7280;margin-left:8px" id="week-range"></span>
+        <button class="btn btn-excel" onclick="exportToExcel('week')">📥 엑셀 내보내기</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>시간</th>
+              <th>회의명</th>
+              <th>담당자</th>
+              <th>메모</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="week-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 전체 일정 ══ -->
+  <div id="tab-all" class="tab-content">
+    <div class="card">
+      <div class="section-title">
+        📋 전체 회의 일정
+        <span class="badge" id="all-count">0건</span>
+        <button class="btn btn-excel" onclick="exportToExcel('all')">📥 엑셀 내보내기</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="🔍 회의명 / 담당자 검색..." oninput="renderAll()" />
+        <span class="sort-label">정렬:</span>
+        <select id="sort-select" onchange="renderAll()">
+          <option value="asc">날짜 오름차순</option>
+          <option value="desc">날짜 내림차순</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>시간</th>
+              <th>회의명</th>
+              <th>담당자</th>
+              <th>메모</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="all-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 일정 추가 ══ -->
+  <div id="tab-add" class="tab-content">
+    <div class="card">
+      <div class="section-title">➕ 새 회의 일정 추가</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>📅 날짜 <span style="color:red">*</span></label>
+          <input type="date" id="f-date" />
+        </div>
+        <div class="form-group">
+          <label>⏰ 시작 시간 <span style="color:red">*</span></label>
+          <input type="time" id="f-start" />
+        </div>
+        <div class="form-group">
+          <label>⏰ 종료 시간</label>
+          <input type="time" id="f-end" />
+        </div>
+        <div class="form-group">
+          <label>📝 회의명 <span style="color:red">*</span></label>
+          <input type="text" id="f-name" placeholder="예) 주간 업무 회의" />
+        </div>
+        <div class="form-group">
+          <label>👤 담당자 <span style="color:red">*</span></label>
+          <input type="text" id="f-person" placeholder="예) 김민준 팀장" />
+        </div>
+        <div class="form-group memo-group">
+          <label>📌 메모</label>
+          <textarea id="f-memo" placeholder="회의 내용, 장소, 참석자 등을 적어주세요"></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addSchedule()">✅ 일정 저장하기</button>
+    </div>
+  </div>
+
+  <!-- ══ 주간 일정표 ══ -->
+  <div id="tab-grid" class="tab-content">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:0">
+        🗓️ 주간 일정표
+        <button class="btn btn-excel" style="margin-left:auto" onclick="window.print()">🖨️ 인쇄</button>
+      </div>
+      <div class="week-nav" style="margin-top:16px">
+        <button class="btn-week" onclick="changeWeek(-1)">◀ 이전 주</button>
+        <div class="week-nav-label" id="grid-week-label"></div>
+        <button class="btn-week active-week" id="btn-this-week" onclick="changeWeek(0)">이번 주</button>
+        <button class="btn-week" onclick="changeWeek(1)">다음 주 ▶</button>
+      </div>
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- 토스트 알림 -->
+<div id="toast"></div>
+
+<!-- 수정 모달 -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h2>✏️ 일정 수정</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>📅 날짜</label>
+        <input type="date" id="e-date" />
+      </div>
+      <div class="form-group">
+        <label>⏰ 시작 시간</label>
+        <input type="time" id="e-start" />
+      </div>
+      <div class="form-group">
+        <label>⏰ 종료 시간</label>
+        <input type="time" id="e-end" />
+      </div>
+      <div class="form-group">
+        <label>📝 회의명</label>
+        <input type="text" id="e-name" />
+      </div>
+      <div class="form-group">
+        <label>👤 담당자</label>
+        <input type="text" id="e-person" />
+      </div>
+      <div class="form-group memo-group">
+        <label>📌 메모</label>
+        <textarea id="e-memo"></textarea>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 데이터 ──────────────────────────────────────────────
+  let schedules = JSON.parse(localStorage.getItem('sangsanguri_schedules') || '[]');
+  let editingId = null;
+
+  function save() {
+    localStorage.setItem('sangsanguri_schedules', JSON.stringify(schedules));
+  }
+
+  // ── 날짜 유틸 ───────────────────────────────────────────
+  function localDateStr(d) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+
+  function todayStr() {
+    return localDateStr(new Date());
+  }
+
+  function getWeekRange() {
+    const now = new Date();
+    const day = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { start: localDateStr(mon), end: localDateStr(sun) };
+  }
+
+  function formatDate(str) {
+    if (!str) return '';
+    const d = new Date(str + 'T00:00:00');
+    const days = ['일','월','화','수','목','금','토'];
+    return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  }
+
+  // ── 시계 ────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('clock').textContent =
+      `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── 탭 전환 ─────────────────────────────────────────────
+  function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    const idx = ['today','week','all','add','grid'].indexOf(name);
+    document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+    if (name === 'grid') { renderGrid(); }
+    else if (name !== 'add') { render(); }
+  }
+
+  // ── 일정 추가 ────────────────────────────────────────────
+  function addSchedule() {
+    const date   = document.getElementById('f-date').value;
+    const start  = document.getElementById('f-start').value;
+    const end    = document.getElementById('f-end').value;
+    const name   = document.getElementById('f-name').value.trim();
+    const person = document.getElementById('f-person').value.trim();
+    const memo   = document.getElementById('f-memo').value.trim();
+
+    if (!date || !start || !name || !person) {
+      showToast('⚠️ 날짜, 시작 시간, 회의명, 담당자는 필수 항목입니다.');
+      return;
+    }
+
+    schedules.push({ id: Date.now(), date, start, end, name, person, memo });
+    save();
+    showToast('✅ 일정이 저장되었습니다!');
+    ['f-date','f-start','f-end','f-name','f-person','f-memo'].forEach(id => {
+      const el = document.getElementById(id);
+      el.tagName === 'TEXTAREA' ? el.value = '' : el.value = '';
+    });
+    showTab('today');
+  }
+
+  // ── 렌더 ─────────────────────────────────────────────────
+  function render() {
+    renderToday();
+    renderWeek();
+    renderAll();
+    if (document.getElementById('tab-grid').classList.contains('active')) renderGrid();
+  }
+
+  function makeActionBtns(id, mode) {
+    return `<button class="btn btn-edit" onclick="openEdit(${id})">✏️ 수정</button>
+            <button class="btn btn-danger" onclick="deleteSchedule(${id})">🗑️ 삭제</button>`;
+  }
+
+  function renderToday() {
+    const today = todayStr();
+    const list = schedules
+      .filter(s => s.date === today)
+      .sort((a,b) => a.start.localeCompare(b.start));
+
+    document.getElementById('today-count').textContent = list.length + '건';
+    document.getElementById('today-date').textContent = formatDate(today);
+
+    const tbody = document.getElementById('today-tbody');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="no-data">오늘 등록된 회의 일정이 없습니다.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(s => `
+      <tr>
+        <td class="time-col">${s.start}${s.end ? ' ~ ' + s.end : ''}</td>
+        <td class="name-col">${esc(s.name)}</td>
+        <td>${esc(s.person)}</td>
+        <td class="memo-col">${esc(s.memo)}</td>
+        <td>${makeActionBtns(s.id)}</td>
+      </tr>`).join('');
+  }
+
+  function renderWeek() {
+    const { start, end } = getWeekRange();
+    const today = todayStr();
+    const list = schedules
+      .filter(s => s.date >= start && s.date <= end)
+      .sort((a,b) => (a.date+a.start).localeCompare(b.date+b.start));
+
+    document.getElementById('week-count').textContent = list.length + '건';
+    document.getElementById('week-range').textContent = `${formatDate(start)} ~ ${formatDate(end)}`;
+
+    const tbody = document.getElementById('week-tbody');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="no-data">이번 주 등록된 회의 일정이 없습니다.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(s => `
+      <tr class="${s.date === today ? 'today-row' : ''}">
+        <td>${formatDate(s.date)}${s.date===today?' <span style="background:#ef4444;color:white;padding:2px 8px;border-radius:8px;font-size:.8rem;font-weight:700;">오늘</span>':''}</td>
+        <td class="time-col">${s.start}${s.end ? ' ~ ' + s.end : ''}</td>
+        <td class="name-col">${esc(s.name)}</td>
+        <td>${esc(s.person)}</td>
+        <td class="memo-col">${esc(s.memo)}</td>
+        <td>${makeActionBtns(s.id)}</td>
+      </tr>`).join('');
+  }
+
+  function renderAll() {
+    const keyword = (document.getElementById('search-input')?.value || '').toLowerCase();
+    const sortDir = document.getElementById('sort-select')?.value || 'asc';
+    const today = todayStr();
+
+    let list = schedules.filter(s =>
+      s.name.toLowerCase().includes(keyword) ||
+      s.person.toLowerCase().includes(keyword)
+    );
+    list.sort((a,b) => {
+      const cmp = (a.date+a.start).localeCompare(b.date+b.start);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    document.getElementById('all-count').textContent = list.length + '건';
+    const tbody = document.getElementById('all-tbody');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="no-data">등록된 회의 일정이 없습니다.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(s => `
+      <tr class="${s.date === today ? 'today-row' : ''}">
+        <td>${formatDate(s.date)}${s.date===today?' <span style="background:#ef4444;color:white;padding:2px 8px;border-radius:8px;font-size:.8rem;font-weight:700;">오늘</span>':''}</td>
+        <td class="time-col">${s.start}${s.end ? ' ~ ' + s.end : ''}</td>
+        <td class="name-col">${esc(s.name)}</td>
+        <td>${esc(s.person)}</td>
+        <td class="memo-col">${esc(s.memo)}</td>
+        <td>${makeActionBtns(s.id)}</td>
+      </tr>`).join('');
+  }
+
+  // ── 삭제 ────────────────────────────────────────────────
+  function deleteSchedule(id) {
+    if (!confirm('이 일정을 삭제하시겠습니까?')) return;
+    schedules = schedules.filter(s => s.id !== id);
+    save();
+    render();
+    showToast('🗑️ 일정이 삭제되었습니다.');
+  }
+
+  // ── 수정 모달 ────────────────────────────────────────────
+  function openEdit(id) {
+    const s = schedules.find(s => s.id === id);
+    if (!s) return;
+    editingId = id;
+    document.getElementById('e-date').value   = s.date;
+    document.getElementById('e-start').value  = s.start;
+    document.getElementById('e-end').value    = s.end;
+    document.getElementById('e-name').value   = s.name;
+    document.getElementById('e-person').value = s.person;
+    document.getElementById('e-memo').value   = s.memo;
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    editingId = null;
+  }
+
+  function saveEdit() {
+    const idx = schedules.findIndex(s => s.id === editingId);
+    if (idx === -1) return;
+    schedules[idx] = {
+      ...schedules[idx],
+      date:   document.getElementById('e-date').value,
+      start:  document.getElementById('e-start').value,
+      end:    document.getElementById('e-end').value,
+      name:   document.getElementById('e-name').value.trim(),
+      person: document.getElementById('e-person').value.trim(),
+      memo:   document.getElementById('e-memo').value.trim(),
+    };
+    save();
+    closeModal();
+    render();
+    showToast('✅ 일정이 수정되었습니다!');
+  }
+
+  // ── 주간 일정표 ─────────────────────────────────────────
+  let gridWeekOffset = 0;
+
+  function getOffsetWeekRange(offset) {
+    const now = new Date();
+    now.setDate(now.getDate() + offset * 7);
+    const day = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { start: localDateStr(mon), end: localDateStr(sun) };
+  }
+
+  function changeWeek(delta) {
+    gridWeekOffset = (delta === 0) ? 0 : gridWeekOffset + delta;
+    document.getElementById('btn-this-week').classList.toggle('active-week', gridWeekOffset === 0);
+    renderGrid();
+  }
+
+  function renderGrid() {
+    const { start, end } = getOffsetWeekRange(gridWeekOffset);
+    const today = todayStr();
+    const dayLabels = ['일','월','화','수','목','금','토'];
+
+    document.getElementById('grid-week-label').textContent =
+      `${formatDate(start)} ~ ${formatDate(end)}`;
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start + 'T00:00:00');
+      d.setDate(d.getDate() + i);
+      days.push(d);
+    }
+
+    document.getElementById('board').innerHTML = days.map(d => {
+      const dateStr  = localDateStr(d);
+      const dayIdx   = d.getDay();
+      const isToday  = dateStr === today;
+      const isWeekend = dayIdx === 0 || dayIdx === 6;
+
+      const events = schedules
+        .filter(s => s.date === dateStr)
+        .sort((a, b) => a.start.localeCompare(b.start));
+
+      const eventsHtml = events.length
+        ? events.map(s => `
+            <div class="board-event">
+              <div class="event-time">⏰ ${s.start}${s.end ? ' ~ ' + s.end : ''}</div>
+              <div class="event-name">${esc(s.name)}</div>
+              <div class="event-person">👤 ${esc(s.person)}</div>
+              ${s.memo ? `<div class="event-memo">📌 ${esc(s.memo)}</div>` : ''}
+            </div>`).join('')
+        : '<div class="board-no-event">일정 없음</div>';
+
+      return `
+        <div class="board-day ${isToday ? 'today-col' : ''} ${isWeekend ? 'weekend-col' : ''}">
+          <div class="board-day-header">
+            <div class="day-name">${dayLabels[dayIdx]}요일</div>
+            <div class="day-date">${d.getMonth()+1}월 ${d.getDate()}일</div>
+            ${isToday ? '<div class="today-badge">TODAY</div>' : ''}
+            ${events.length ? `<div class="count-badge">${events.length}건</div>` : ''}
+          </div>
+          <div class="board-events">${eventsHtml}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── 엑셀 내보내기 ────────────────────────────────────────
+  function loadXLSX(cb) {
+    if (window.XLSX) { cb(); return; }
+    showToast('⏳ 엑셀 기능을 불러오는 중...');
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/xlsx/dist/xlsx.full.min.js';
+    s.onload = cb;
+    s.onerror = () => showToast('⚠️ 엑셀 기능 로드 실패. 인터넷 연결을 확인해 주세요.');
+    document.head.appendChild(s);
+  }
+
+  function exportToExcel(scope) {
+    loadXLSX(() => doExport(scope));
+  }
+
+  function doExport(scope) {
+    let list = [];
+    let sheetName = '회의일정';
+    let fileName  = '상상우리_회의일정';
+
+    if (scope === 'today') {
+      const today = todayStr();
+      list = schedules.filter(s => s.date === today).sort((a,b) => a.start.localeCompare(b.start));
+      sheetName = '오늘일정';
+      fileName  = `상상우리_오늘일정_${today}`;
+    } else if (scope === 'week') {
+      const { start, end } = getWeekRange();
+      list = schedules.filter(s => s.date >= start && s.date <= end)
+                      .sort((a,b) => (a.date+a.start).localeCompare(b.date+b.start));
+      sheetName = '이번주일정';
+      fileName  = `상상우리_주간일정_${start}`;
+    } else {
+      const keyword = (document.getElementById('search-input')?.value || '').toLowerCase();
+      const sortDir = document.getElementById('sort-select')?.value || 'asc';
+      list = schedules.filter(s =>
+        s.name.toLowerCase().includes(keyword) || s.person.toLowerCase().includes(keyword)
+      ).sort((a,b) => {
+        const cmp = (a.date+a.start).localeCompare(b.date+b.start);
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+      sheetName = '전체일정';
+      fileName  = `상상우리_전체일정_${todayStr()}`;
+    }
+
+    if (!list.length) {
+      showToast('⚠️ 내보낼 일정이 없습니다.');
+      return;
+    }
+
+    const rows = [['날짜', '요일', '시작 시간', '종료 시간', '회의명', '담당자', '메모']];
+    const dayNames = ['일','월','화','수','목','금','토'];
+    list.forEach(s => {
+      const d = new Date(s.date + 'T00:00:00');
+      rows.push([s.date, dayNames[d.getDay()], s.start, s.end || '', s.name, s.person, s.memo || '']);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch:13 },{ wch:5 },{ wch:10 },{ wch:10 },{ wch:28 },{ wch:16 },{ wch:36 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, fileName + '.xlsx');
+    showToast(`📥 "${fileName}.xlsx" 다운로드 완료!`);
+  }
+
+  // ── XSS 방지 ────────────────────────────────────────────
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ── 토스트 ──────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── 날짜 기본값 ─────────────────────────────────────────
+  document.getElementById('f-date').value = todayStr();
+
+  // ── 초기 렌더 ───────────────────────────────────────────
+  render();
+
+  // ── 모달 외부 클릭 닫기 ──────────────────────────────────
+  document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+</script>
+</body>
+</html>
