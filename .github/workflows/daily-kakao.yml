@@ -1,4 +1,4 @@
-name: 📅 매일 아침 카카오톡 일정 알림
+name: 📅 매일 아침 이메일 일정 알림
 
 on:
   schedule:
@@ -6,13 +6,20 @@ on:
   workflow_dispatch:         # 수동 테스트 가능
 
 jobs:
-  send-kakao:
+  send-email:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: 📨 오늘 일정 카카오톡 발송
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 nodemailer 설치
+        run: npm install nodemailer
+
+      - name: 📨 오늘 일정 이메일 발송
         env:
-          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
-          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
-        run: node send-kakao.js
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: node send-email.js
