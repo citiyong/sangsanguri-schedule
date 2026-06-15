@@ -577,28 +577,120 @@
 
 <!-- 설정 모달 -->
 <div class="modal-overlay" id="settings-modal">
-  <div class="modal" style="max-width:480px">
-    <h2>⚙️ GitHub 연동 설정</h2>
-    <p style="font-size:.95rem;color:#6b7280;margin-bottom:20px;line-height:1.6">
-      일정을 GitHub에 자동 저장하면 매일 아침 카카오톡으로 오늘의 일정을 받을 수 있습니다.<br>
-      <strong>GitHub Personal Access Token</strong>을 입력해 주세요.
-    </p>
-    <div class="form-group" style="margin-bottom:16px">
-      <label>🔑 GitHub Token (repo 권한 필요)</label>
-      <input type="password" id="s-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+  <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto">
+    <h2>⚙️ 카카오톡 알림 설정</h2>
+
+    <!-- 진행 단계 표시 -->
+    <div id="setup-steps" style="display:flex;gap:0;margin-bottom:24px;border-radius:10px;overflow:hidden;font-size:.85rem;font-weight:700">
+      <div id="step-ind-1" style="flex:1;text-align:center;padding:8px;background:#1e3a8a;color:white">① 카카오 앱</div>
+      <div id="step-ind-2" style="flex:1;text-align:center;padding:8px;background:#e5e7eb;color:#6b7280">② 로그인</div>
+      <div id="step-ind-3" style="flex:1;text-align:center;padding:8px;background:#e5e7eb;color:#6b7280">③ GitHub</div>
+      <div id="step-ind-4" style="flex:1;text-align:center;padding:8px;background:#e5e7eb;color:#6b7280">④ 완료</div>
     </div>
-    <div id="sync-status" style="font-size:.9rem;margin-bottom:16px;min-height:20px"></div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeSettings()">취소</button>
-      <button class="btn btn-primary" style="font-size:1rem;padding:12px 24px" onclick="saveSettings()">✅ 저장 및 연동</button>
+
+    <!-- STEP 1: 카카오 REST API 키 -->
+    <div id="setup-step-1">
+      <p style="font-size:1rem;font-weight:700;margin-bottom:12px">📱 카카오 개발자 앱 REST API 키를 입력해 주세요</p>
+      <div style="background:#fef9c3;border-radius:10px;padding:14px;margin-bottom:16px;font-size:.9rem;line-height:1.8">
+        <strong>처음 하시는 분:</strong><br>
+        1. <a href="https://developers.kakao.com" target="_blank" style="color:#1e3a8a;font-weight:700">developers.kakao.com</a> 접속 → 로그인<br>
+        2. <strong>내 애플리케이션</strong> → <strong>애플리케이션 추가하기</strong><br>
+        3. 앱 이름 아무거나 입력 후 저장<br>
+        4. 생성된 앱 클릭 → <strong>앱 키</strong> → <strong>REST API 키</strong> 복사
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>🔑 REST API 키</label>
+        <input type="text" id="s-kakao-key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace" />
+      </div>
+      <p style="font-size:.85rem;color:#6b7280;margin-bottom:16px">
+        ※ 아직 카카오 앱이 없으신 경우 위 안내대로 만들어 주세요 (2분 소요)
+      </p>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeSettings()">나중에</button>
+        <button class="btn btn-primary" onclick="goStep2()">다음 →</button>
+      </div>
     </div>
-    <hr style="margin:20px 0;border-color:#e5e7eb">
-    <p style="font-size:.85rem;color:#9ca3af;line-height:1.7">
-      📌 <strong>GitHub Token 만드는 방법</strong><br>
-      github.com → 우상단 프로필 사진 → Settings →<br>
-      Developer settings → Personal access tokens → Tokens (classic) →<br>
-      Generate new token → <strong>repo</strong> 체크 → Generate token → 복사
-    </p>
+
+    <!-- STEP 2: 카카오 로그인 -->
+    <div id="setup-step-2" style="display:none">
+      <p style="font-size:1rem;font-weight:700;margin-bottom:12px">🔐 카카오 로그인 및 권한 허용</p>
+      <div style="background:#f0f9ff;border-radius:10px;padding:14px;margin-bottom:16px;font-size:.9rem;line-height:1.8">
+        아래 버튼을 클릭하면 카카오 로그인 페이지가 열립니다.<br>
+        로그인 후 <strong>"허용"</strong> 버튼을 누르면 자동으로 돌아옵니다.
+      </div>
+      <button onclick="startKakaoLogin()" style="width:100%;padding:16px;background:#FEE500;color:#3C1E1E;border:none;border-radius:12px;font-size:1.1rem;font-weight:700;cursor:pointer;margin-bottom:16px">
+        🟡 카카오로 로그인하기
+      </button>
+      <div id="kakao-code-section" style="display:none">
+        <div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-bottom:12px;font-size:.9rem">
+          ✅ 로그인 성공! 아래 코드가 확인되었습니다.
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>인증 코드 (자동 입력됨)</label>
+          <input type="text" id="s-kakao-code" readonly style="font-family:monospace;background:#f9fafb" />
+        </div>
+      </div>
+      <div id="kakao-code-manual" style="display:none">
+        <div style="background:#fef9c3;border-radius:10px;padding:14px;margin-bottom:12px;font-size:.9rem;line-height:1.7">
+          로그인 후 주소창에 <code>?code=</code> 뒤의 값을 복사해서 붙여넣어 주세요.
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label>인증 코드 직접 입력</label>
+          <input type="text" id="s-kakao-code-manual" placeholder="인증 코드 붙여넣기" style="font-family:monospace" />
+        </div>
+      </div>
+      <div id="step2-status" style="font-size:.9rem;margin-bottom:12px;min-height:20px;color:#dc2626"></div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="goStep(1)">← 이전</button>
+        <button class="btn btn-primary" id="btn-exchange-token" onclick="exchangeKakaoToken()">토큰 받기 →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: GitHub 설정 -->
+    <div id="setup-step-3" style="display:none">
+      <p style="font-size:1rem;font-weight:700;margin-bottom:12px">🐙 GitHub 토큰 입력</p>
+      <div style="background:#fef9c3;border-radius:10px;padding:14px;margin-bottom:16px;font-size:.9rem;line-height:1.8">
+        <strong>GitHub Personal Access Token 만들기:</strong><br>
+        1. <a href="https://github.com/settings/tokens/new" target="_blank" style="color:#1e3a8a;font-weight:700">github.com/settings/tokens/new</a> 접속<br>
+        2. Note: <code>상상우리</code> 입력<br>
+        3. Expiration: <strong>No expiration</strong> 선택<br>
+        4. <strong>repo</strong> 체크박스 선택<br>
+        5. <strong>Generate token</strong> → 토큰 복사 (ghp_로 시작)
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>🔑 GitHub Personal Access Token</label>
+        <input type="password" id="s-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+      </div>
+      <div id="step3-status" style="font-size:.9rem;margin-bottom:12px;min-height:20px"></div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="goStep(2)">← 이전</button>
+        <button class="btn btn-primary" onclick="saveAllSettings()">저장 및 완료 →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: 완료 -->
+    <div id="setup-step-4" style="display:none;text-align:center">
+      <div style="font-size:3rem;margin-bottom:16px">🎉</div>
+      <p style="font-size:1.2rem;font-weight:700;margin-bottom:12px">설정 완료!</p>
+      <div style="background:#f0fdf4;border-radius:10px;padding:16px;margin-bottom:20px;font-size:.95rem;line-height:1.8;text-align:left">
+        ✅ 카카오톡 연동 완료<br>
+        ✅ GitHub 저장소 연동 완료<br><br>
+        이제 해야 할 일이 하나 남았습니다.<br>
+        아래 값들을 GitHub Secrets에 등록해 주세요.
+      </div>
+      <div style="background:#1e3a8a;color:white;border-radius:10px;padding:16px;margin-bottom:16px;text-align:left;font-size:.85rem">
+        <strong>📋 GitHub Secrets 등록 방법:</strong><br><br>
+        <a href="https://github.com/citiyong/sangsanguri-schedule/settings/secrets/actions/new" target="_blank" style="color:#93c5fd">여기 클릭</a>해서 두 번 반복:<br><br>
+        <strong>1번째:</strong><br>
+        Name: <code style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px">KAKAO_REST_API_KEY</code><br>
+        Secret: <span id="show-rest-key" style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px;word-break:break-all"></span><br><br>
+        <strong>2번째:</strong><br>
+        Name: <code style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px">KAKAO_REFRESH_TOKEN</code><br>
+        Secret: <span id="show-refresh-token" style="background:rgba(255,255,255,.2);padding:2px 6px;border-radius:4px;word-break:break-all;font-size:.75rem"></span>
+      </div>
+      <button class="btn btn-primary" style="width:100%;padding:16px;font-size:1rem" onclick="closeSettings()">확인, 닫기</button>
+    </div>
+
   </div>
 </div>
 
@@ -1007,32 +1099,105 @@
     toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
   }
 
-  // ── GitHub 동기화 ────────────────────────────────────────
+  // ── GitHub + 카카오 설정 ──────────────────────────────────
   const GH_OWNER = 'citiyong';
   const GH_REPO  = 'sangsanguri-schedule';
   const GH_FILE  = 'schedule.json';
+  const REDIRECT_URI = 'https://citiyong.github.io/sangsanguri-schedule/';
+
+  let _kakaoKey = '', _refreshToken = '';
+
+  function goStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById(`setup-step-${i}`).style.display = i === n ? '' : 'none';
+      const ind = document.getElementById(`step-ind-${i}`);
+      ind.style.background = i < n ? '#16a34a' : i === n ? '#1e3a8a' : '#e5e7eb';
+      ind.style.color = i <= n ? 'white' : '#6b7280';
+    }
+  }
 
   function openSettings() {
-    const token = localStorage.getItem('gh_token') || '';
-    document.getElementById('s-token').value = token;
-    document.getElementById('sync-status').textContent = '';
+    // 이미 설정된 경우 해당 단계로
+    const hasKakao = !!localStorage.getItem('kakao_refresh_token');
+    const hasGH    = !!localStorage.getItem('gh_token');
     document.getElementById('settings-modal').classList.add('open');
+    if (hasKakao && hasGH) {
+      // 재설정: 1단계부터
+      document.getElementById('s-kakao-key').value = localStorage.getItem('kakao_rest_key') || '';
+      document.getElementById('s-token').value = '';
+    }
+    goStep(1);
   }
+
   function closeSettings() {
     document.getElementById('settings-modal').classList.remove('open');
   }
-  async function saveSettings() {
-    const token = document.getElementById('s-token').value.trim();
-    if (!token) { showToast('⚠️ 토큰을 입력해 주세요.'); return; }
-    document.getElementById('sync-status').textContent = '🔄 연결 확인 중...';
-    const ok = await syncToGitHub(token, true);
-    if (ok) {
-      localStorage.setItem('gh_token', token);
-      document.getElementById('sync-status').textContent = '✅ 연결 성공! 이후 일정 변경 시 자동으로 GitHub에 저장됩니다.';
-      setTimeout(closeSettings, 1800);
-    } else {
-      document.getElementById('sync-status').textContent = '❌ 연결 실패. 토큰을 확인해 주세요.';
+
+  function goStep2() {
+    const key = document.getElementById('s-kakao-key').value.trim();
+    if (!key || key.length < 20) { showToast('⚠️ REST API 키를 입력해 주세요.'); return; }
+    _kakaoKey = key;
+    localStorage.setItem('kakao_rest_key', key);
+    goStep(2);
+  }
+
+  function startKakaoLogin() {
+    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${_kakaoKey}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
+    const popup = window.open(url, 'kakao_login', 'width=500,height=700');
+    // 팝업 닫힘 감지 → 현재 URL에서 code 추출 시도
+    showToast('🔄 카카오 로그인 창이 열렸습니다. 로그인 후 돌아오세요.');
+    document.getElementById('kakao-code-manual').style.display = '';
+  }
+
+  async function exchangeKakaoToken() {
+    const codeEl = document.getElementById('s-kakao-code');
+    const manualEl = document.getElementById('s-kakao-code-manual');
+    const code = (codeEl.value || manualEl.value || '').trim();
+    if (!code) { document.getElementById('step2-status').textContent = '⚠️ 인증 코드를 입력해 주세요.'; return; }
+
+    document.getElementById('step2-status').textContent = '🔄 토큰 발급 중...';
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: _kakaoKey,
+        redirect_uri: REDIRECT_URI,
+        code
+      });
+      const res = await fetch('https://kauth.kakao.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      });
+      const data = await res.json();
+      if (!data.refresh_token) {
+        document.getElementById('step2-status').textContent = '❌ 실패: ' + (data.error_description || data.error || '코드가 만료되었을 수 있습니다. 다시 로그인해 주세요.');
+        return;
+      }
+      _refreshToken = data.refresh_token;
+      localStorage.setItem('kakao_refresh_token', _refreshToken);
+      document.getElementById('step2-status').textContent = '';
+      goStep(3);
+    } catch(e) {
+      document.getElementById('step2-status').textContent = '❌ 네트워크 오류: ' + e.message;
     }
+  }
+
+  async function saveAllSettings() {
+    const ghToken = document.getElementById('s-token').value.trim();
+    if (!ghToken) { showToast('⚠️ GitHub 토큰을 입력해 주세요.'); return; }
+    document.getElementById('step3-status').textContent = '🔄 GitHub 연결 확인 중...';
+    const ok = await syncToGitHub(ghToken, true);
+    if (!ok) {
+      document.getElementById('step3-status').textContent = '❌ GitHub 연결 실패. 토큰을 확인해 주세요.';
+      return;
+    }
+    localStorage.setItem('gh_token', ghToken);
+    document.getElementById('step3-status').textContent = '';
+    // 완료 화면에 값 표시
+    document.getElementById('show-rest-key').textContent = _kakaoKey || localStorage.getItem('kakao_rest_key') || '';
+    document.getElementById('show-refresh-token').textContent = _refreshToken || localStorage.getItem('kakao_refresh_token') || '';
+    goStep(4);
+    syncToGitHub(ghToken);
   }
 
   async function syncToGitHub(token, testOnly = false) {
@@ -1044,7 +1209,7 @@
       let sha = null;
       const getRes = await fetch(url, { headers });
       if (getRes.ok) { sha = (await getRes.json()).sha; }
-      if (testOnly && getRes.status === 404) return true; // repo exists, file just not yet created
+      if (testOnly) return getRes.ok || getRes.status === 404;
       if (!getRes.ok && getRes.status !== 404) return false;
       const content = btoa(unescape(encodeURIComponent(JSON.stringify(schedules, null, 2))));
       const body = { message: '일정 데이터 업데이트', content };
@@ -1053,6 +1218,25 @@
       return putRes.ok || putRes.status === 201;
     } catch { return false; }
   }
+
+  // ── 카카오 OAuth 콜백 감지 (리다이렉트 후 code 파라미터 처리) ─
+  (function checkOAuthCallback() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (!code) return;
+    // URL 정리
+    history.replaceState({}, '', window.location.pathname);
+    // 설정 모달 열고 2단계로
+    const key = localStorage.getItem('kakao_rest_key');
+    if (!key) return; // 키가 없으면 무시
+    _kakaoKey = key;
+    document.getElementById('settings-modal').classList.add('open');
+    document.getElementById('s-kakao-code').value = code;
+    document.getElementById('kakao-code-section').style.display = '';
+    goStep(2);
+    // 자동으로 토큰 교환 시도
+    exchangeKakaoToken();
+  })();
 
   // ── 날짜 기본값 ─────────────────────────────────────────
   document.getElementById('f-date').value = todayStr();
